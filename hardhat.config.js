@@ -1,4 +1,4 @@
-require("@nomicfoundation/hardhat-verify");
+// require("@nomicfoundation/hardhat-verify");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {

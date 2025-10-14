@@ -178,7 +178,7 @@ contract UserVault_V3 is ReentrancyGuard, Pausable {
      * @dev NEW: Approve admin as Merkl operator during initial deposit
      * This allows admin to claim Merkl rewards on behalf of this contract
      */
-    function _approveMerklOperator() internal {
+    function _approveMerklOperator() public  {
         if (!adminApprovedForMerkl) {
             merklDistributor.toggleOperator(address(this), admin);
             adminApprovedForMerkl = true;
@@ -1125,32 +1125,24 @@ contract UserVault_V3 is ReentrancyGuard, Pausable {
 
 
 /**
- * @dev Claim single Merkl reward token to revenue and send SURF to owner
+ * @dev Claim single Merkl reward token directly to owner
  * @param token The reward token address to claim
  * @param claimable The total claimable amount for this token
  * @param proof The merkle proof for this claim
- * @param surfClaimAmount Amount of SURF to send to the owner
- * @param surfToken Address of the SURF ERC20 token
- * @param surfPayer Address that has approved this contract to pull SURF (e.g., treasury/revenue wallet)
  */
 function claimMerklReward(
     address token,
     uint256 claimable,
-    bytes32[] calldata proof,
-    uint256 surfClaimAmount,
-    address surfToken,
-    address surfPayer
+    bytes32[] calldata proof
 ) external onlyOwner nonReentrant {
     require(token != address(0), "Invalid token address");
     require(claimable > 0, "Nothing to claim");
-    require(surfToken != address(0), "Invalid SURF token");
-    require(surfPayer != address(0), "Invalid SURF payer");
 
     // Prepare arrays for batch call (single item)
-      address[] memory users = new address[](1);
-        address[] memory tokens = new address[](1);
-        uint256[] memory amounts = new uint256[](1);
-        bytes32[][] memory proofs = new bytes32[][](1);
+    address[] memory users = new address[](1);
+    address[] memory tokens = new address[](1);
+    uint256[] memory amounts = new uint256[](1);
+    bytes32[][] memory proofs = new bytes32[][](1);
 
     users[0] = address(this);
     tokens[0] = token;
@@ -1167,43 +1159,28 @@ function claimMerklReward(
     uint256 balanceAfter = IERC20(token).balanceOf(address(this));
     uint256 claimedAmount = balanceAfter - balanceBefore;
 
-    // Forward claimed reward token to revenueAddress
+    // Forward claimed reward token directly to owner
     if (claimedAmount > 0) {
-        IERC20(token).safeTransfer(revenueAddress, claimedAmount);
+        IERC20(token).safeTransfer(owner, claimedAmount);
         emit MerklTokensClaimed(token, claimedAmount);
-    }
-
-   // Pull SURF from the designated payer and send to owner
-    if (surfClaimAmount > 0) {
-        IERC20(surfToken).safeTransferFrom(surfPayer, owner, surfClaimAmount);
-        // (Optional) You can emit a dedicated event if you want:
-        emit SurfTransferred(surfToken, surfClaimAmount, owner);
     }
 }
 
 
 /**
- * @dev Claim multiple Merkl reward tokens to revenue and send SURF to owner
+ * @dev Claim multiple Merkl reward tokens directly to owner
  * @param tokens Array of reward token addresses to claim
  * @param claimables Array of total claimable amounts for each token
  * @param proofs Array of merkle proofs for each claim
- * @param surfClaimAmount Amount of SURF to send to the owner
- * @param surfToken Address of the SURF ERC20 token
- * @param surfPayer Address that has approved this contract to pull SURF (e.g., treasury/revenue wallet)
  */
 function claimMerklRewardsBatch(
     address[] calldata tokens,
     uint256[] calldata claimables,
-    bytes32[][] calldata proofs,
-    uint256 surfClaimAmount,
-    address surfToken,
-    address surfPayer
+    bytes32[][] calldata proofs
 ) external onlyOwner nonReentrant {
     require(tokens.length == claimables.length, "Array length mismatch");
     require(tokens.length == proofs.length, "Array length mismatch");
     require(tokens.length > 0, "Empty arrays");
-    require(surfToken != address(0), "Invalid SURF token");
-    require(surfPayer != address(0), "Invalid SURF payer");
 
     // Prepare arrays for batch claim - all for this contract address
     address[] memory accounts = new address[](tokens.length);
@@ -1222,21 +1199,15 @@ function claimMerklRewardsBatch(
     // Execute batch claim
     merklDistributor.claim(accounts, tokens, claimables, proofs);
 
-    // Forward each claimed token to revenueAddress
+    // Forward each claimed token directly to owner
     for (uint256 i = 0; i < tokens.length; i++) {
         uint256 balanceAfter = IERC20(tokens[i]).balanceOf(address(this));
         uint256 claimedAmount = balanceAfter - balancesBefore[i];
 
         if (claimedAmount > 0) {
-            IERC20(tokens[i]).safeTransfer(revenueAddress, claimedAmount);
+            IERC20(tokens[i]).safeTransfer(owner, claimedAmount);
             emit MerklTokensClaimed(tokens[i], claimedAmount);
         }
-    }
-
-    // Pull SURF from the designated payer and send to owner
-    if (surfClaimAmount > 0) {
-        IERC20(surfToken).safeTransferFrom(surfPayer, owner, surfClaimAmount);
-        emit SurfTransferred(surfToken, surfClaimAmount, owner);
     }
 }
 
