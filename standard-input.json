@@ -1,0 +1,22 @@
+{
+    "debug": {
+      "revertStrings": "strip"
+    },
+    "evmVersion": "cancun",
+    "libraries": {},
+    "optimizer": {
+      "enabled": true,
+      "runs": 1
+    },
+    "outputSelection": {
+      "*": {
+        "": [
+          "*"
+        ],
+        "*": [
+          "*"
+        ]
+      }
+    },
+    "viaIR": true
+  }

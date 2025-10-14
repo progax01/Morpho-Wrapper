@@ -1,0 +1,26 @@
+{
+  "name": "hardhat-project",
+  "scripts": {
+    "check-rewards": "npx hardhat run scripts/checkRewards.js --network hardhat",
+    "check-rewards-base": "npx hardhat run scripts/checkRewards.js --network base"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@nomicfoundation/hardhat-verify": "^3.0.2",
+    "hardhat": "^2.26.2"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
+    "node-fetch": "^2.7.0"
+  },
+  "version": "1.0.0",
+  "description": "UserVault V3 is an advanced yield optimization contract that manages individual user vaults with automated asset swapping, vault rebalancing, and fee collection mechanisms. The contract integrates with MetaMorpho vaults via the Morpho bundler system and utilizes Aerodrome DEX for optimal asset swapping.",
+  "main": "hardhat.config.js",
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
