@@ -131,7 +131,6 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
      * @param _assetVaults 2D array of vaults for each asset. Each asset can have multiple vaults.
      *        Example: [[USDC_Vault1, USDC_Vault2], [WETH_Vault1, WETH_Vault2, WETH_Vault3]]
      *        The first vault in each sub-array becomes the active/primary vault for that asset
-     * @param _initialAllowedVaults Array of all vaults that are whitelisted (flattened list)
      * @param _revenueAddress Address to receive fees
      * @param _feePercentage Fee percentage in basis points for withdrawal fees
      * @param _rebalanceFeePercentage Fee percentage in basis points for rebalance fees (e.g., 1000 = 10%)
@@ -142,7 +141,6 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
         address _admin,
         address[] memory _assets,
         address[][] memory _assetVaults,
-        address[] memory _initialAllowedVaults,
         address _revenueAddress,
         uint256 _feePercentage,
         uint256 _rebalanceFeePercentage,
@@ -188,15 +186,12 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
                 }
 
                 assetAvailableVaults[_assets[i]].push(vault);
-            }
-        }
 
-        // Add initial vaults to whitelist
-        for (uint256 i = 0; i < _initialAllowedVaults.length; i++) {
-            require(_initialAllowedVaults[i] != address(0), "Invalid vault address");
-            if (!isAllowedVault[_initialAllowedVaults[i]]) {
-                isAllowedVault[_initialAllowedVaults[i]] = true;
-                allowedVaults.push(_initialAllowedVaults[i]);
+                // Add vault to allowed vaults whitelist if not already added
+                if (!isAllowedVault[vault]) {
+                    isAllowedVault[vault] = true;
+                    allowedVaults.push(vault);
+                }
             }
         }
     }
@@ -597,19 +592,6 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
     }
 
     /**
-     * @dev Add a new vault to the whitelist
-     */
-    function addVault(address vault) external onlyAdmin {
-        require(vault != address(0), "Invalid vault address");
-        require(!isAllowedVault[vault], "Vault already allowed");
-
-        isAllowedVault[vault] = true;
-        allowedVaults.push(vault);
-
-        emit VaultAdded(vault);
-    }
-
-    /**
      * @dev Remove a vault from the whitelist
      */
     function removeVault(address vault) external onlyAdmin {
@@ -713,9 +695,10 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
     /**
      * @dev Initial deposit for a specific asset
      * @param asset The asset to deposit
+     * @param vault The vault to deposit into (must be in assetAvailableVaults for this asset)
      * @param amount Amount to deposit
      */
-    function initialDeposit(address asset, uint256 amount)
+    function initialDeposit(address asset, address vault, uint256 amount)
         external
         onlyOwner
         onlyAllowedAsset(asset)
@@ -724,9 +707,8 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
     {
         require(!assetHasInitialDeposit[asset], "Initial deposit already made for this asset");
         require(amount > 0, "Amount must be positive");
-
-        address vault = assetToVault[asset];
-        require(vault != address(0), "No vault set for asset");
+        require(vault != address(0), "Invalid vault address");
+        require(isVaultAvailableForAsset(asset, vault), "Vault not available for this asset");
 
         // Approve admin as Merkl operator on first deposit (any asset)
         _approveMerklOperator();
@@ -736,6 +718,9 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
 
         // Deposit to vault using bundler
         _depositToVaultViaBundler(vault, amount, asset);
+
+        // Set the chosen vault as the active vault for this asset
+        assetToVault[asset] = vault;
 
         // Set state for this asset
         assetTotalDeposited[asset] = amount;
@@ -1258,6 +1243,7 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
 
     /**
      * @dev Add a new vault to an asset's available vaults list
+     * @notice Automatically adds vault to global whitelist if not already present
      * @param asset The asset address
      * @param vault The vault address to add
      */
@@ -1265,12 +1251,18 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
         external
         onlyAdmin
         onlyAllowedAsset(asset)
-        onlyAllowedVault(vault)
     {
         require(vault != address(0), "Invalid vault address");
         require(IMetaMorpho(vault).asset() == asset, "Vault asset mismatch");
         require(!isVaultAvailableForAsset(asset, vault), "Vault already available for asset");
 
+        // Automatically add to global whitelist if not already present
+        if (!isAllowedVault[vault]) {
+            isAllowedVault[vault] = true;
+            allowedVaults.push(vault);
+        }
+
+        // Add to asset's available vaults
         assetAvailableVaults[asset].push(vault);
 
         emit VaultAdded(vault);

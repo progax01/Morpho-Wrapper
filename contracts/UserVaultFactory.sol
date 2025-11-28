@@ -31,13 +31,7 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
     // Mapping to track if a vault is deployed by this factory
     mapping(address => bool) public isFactoryVault;
 
-    // Factory configuration
-    uint256 public deploymentFee; // Fee in wei to deploy a vault
-    address public feeRecipient; // Address to receive deployment fees
-
-    constructor(address _initialOwner, uint256 _deploymentFee, address _feeRecipient) Ownable(_initialOwner) {
-        deploymentFee = _deploymentFee;
-        feeRecipient = _feeRecipient != address(0) ? _feeRecipient : _initialOwner;
+    constructor(address _initialOwner) Ownable(_initialOwner) {
     }
 
     /**
@@ -46,7 +40,6 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
      * @param admin The admin of the vault
      * @param assets Array of initial assets (USDC, WETH, etc.)
      * @param assetVaults 2D array of vaults for each asset (each asset can have multiple vaults)
-     * @param initialAllowedVaults Array of all vaults that are whitelisted
      * @param revenueAddress Address to receive fees
      * @param feePercentage Withdrawal fee percentage in basis points
      * @param rebalanceFeePercentage Rebalance fee percentage in basis points
@@ -59,7 +52,6 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
         address admin,
         address[] memory assets,
         address[][] memory assetVaults,
-        address[] memory initialAllowedVaults,
         address revenueAddress,
         uint256 feePercentage,
         uint256 rebalanceFeePercentage,
@@ -73,7 +65,6 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
                 admin,
                 assets,
                 assetVaults,
-                initialAllowedVaults,
                 revenueAddress,
                 feePercentage,
                 rebalanceFeePercentage,
@@ -114,7 +105,6 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
      * @param assets Array of initial assets (USDC, WETH, WBTC, etc.)
      * @param assetVaults 2D array of vaults for each asset. Each asset can have multiple vaults.
      *        Example: [[USDC_Vault1, USDC_Vault2, USDC_Vault3], [WETH_Vault1, WETH_Vault2]]
-     * @param initialAllowedVaults Array of all vaults that are whitelisted (flattened)
      * @param revenueAddress Address to receive fees
      * @param feePercentage Withdrawal fee percentage in basis points
      * @param rebalanceFeePercentage Rebalance fee percentage in basis points (e.g., 1000 = 10%)
@@ -127,31 +117,18 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
         address admin,
         address[] memory assets,
         address[][] memory assetVaults,
-        address[] memory initialAllowedVaults,
         address revenueAddress,
         uint256 feePercentage,
         uint256 rebalanceFeePercentage,
         uint256 merklClaimFeePercentage,
         bytes32 salt
-    ) external payable nonReentrant whenNotPaused returns (address vaultAddress) {
-
-        // Check deployment fee
-        if (deploymentFee > 0) {
-            require(msg.value >= deploymentFee, "Low fee");
-            (bool success, ) = feeRecipient.call{value: deploymentFee}("");
-            require(success, "Fee fail");
-            if (msg.value > deploymentFee) {
-                (bool refundSuccess, ) = msg.sender.call{value: msg.value - deploymentFee}("");
-                require(refundSuccess, "Refund fail");
-            }
-        }
+    ) external nonReentrant whenNotPaused returns (address vaultAddress) {
 
         require(deployedVaults[owner][salt] == address(0), "Exists");
         require(owner != address(0), "Owner 0");
         require(admin != address(0), "Admin 0");
         require(assets.length > 0, "No assets");
         require(assets.length == assetVaults.length, "Length");
-        require(initialAllowedVaults.length > 0, "No vaults");
         require(revenueAddress != address(0), "Revenue 0");
 
         for (uint256 i = 0; i < assets.length; i++) {
@@ -170,7 +147,6 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
                 admin,
                 assets,
                 assetVaults,
-                initialAllowedVaults,
                 revenueAddress,
                 feePercentage,
                 rebalanceFeePercentage,
@@ -200,7 +176,6 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
      * @param admin The admin of the vault
      * @param assets Array of initial assets
      * @param assetVaults 2D array of vaults for each asset
-     * @param initialAllowedVaults Array of all vaults that are whitelisted
      * @param revenueAddress Address to receive fees
      * @param feePercentage Withdrawal fee percentage in basis points
      * @param rebalanceFeePercentage Rebalance fee percentage in basis points
@@ -214,21 +189,19 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
         address admin,
         address[] memory assets,
         address[][] memory assetVaults,
-        address[] memory initialAllowedVaults,
         address revenueAddress,
         uint256 feePercentage,
         uint256 rebalanceFeePercentage,
         uint256 merklClaimFeePercentage,
         uint256 nonce
-    ) external payable returns (address vaultAddress, bytes32 salt) {
+    ) external returns (address vaultAddress, bytes32 salt) {
         salt = generateDeterministicSalt(owner, nonce);
 
-        vaultAddress = this.deployVault{value: msg.value}(
+        vaultAddress = this.deployVault(
             owner,
             admin,
             assets,
             assetVaults,
-            initialAllowedVaults,
             revenueAddress,
             feePercentage,
             rebalanceFeePercentage,
@@ -258,21 +231,6 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
     // Admin functions
 
     /**
-     * @dev Update deployment fee (only owner)
-     */
-    function setDeploymentFee(uint256 newFee) external onlyOwner {
-        deploymentFee = newFee;
-    }
-
-    /**
-     * @dev Update fee recipient (only owner)
-     */
-    function setFeeRecipient(address newRecipient) external onlyOwner {
-        require(newRecipient != address(0), "Invalid");
-        feeRecipient = newRecipient;
-    }
-
-    /**
      * @dev Pause contract (only owner)
      */
     function pause() external onlyOwner {
@@ -284,15 +242,5 @@ contract UserVaultFactory is Ownable, Pausable, ReentrancyGuard {
      */
     function unpause() external onlyOwner {
         _unpause();
-    }
-
-    /**
-     * @dev Emergency withdraw ETH (only owner)
-     */
-    function emergencyWithdraw() external onlyOwner {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No balance");
-        (bool success, ) = owner().call{value: balance}("");
-        require(success, "Fail");
     }
 }
