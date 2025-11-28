@@ -1,15 +1,15 @@
+require("@nomicfoundation/hardhat-toolbox");
 require("@nomicfoundation/hardhat-verify");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
-    version: "0.8.30",
+    version: "0.8.28",
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1, // Low runs value for smaller bytecode
+        runs: 200,
       },
-      viaIR: true, // Enable via IR for better optimization
       evmVersion: "cancun",
     },
   },

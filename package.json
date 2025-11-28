@@ -5,8 +5,12 @@
     "check-rewards-base": "npx hardhat run scripts/checkRewards.js --network base"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
+    "@nomicfoundation/hardhat-ethers": "^4.0.3",
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@nomicfoundation/hardhat-verify": "^3.0.2",
+    "chai": "^6.2.1",
+    "ethers": "^6.15.0",
     "hardhat": "^2.26.2"
   },
   "dependencies": {
