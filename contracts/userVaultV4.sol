@@ -22,10 +22,8 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     // Aerodrome contract addresses
-    address public constant AERODROME_ROUTER =
-        0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43;
-    address public constant AERODROME_FACTORY =
-        0x420DD381b31aEf6683db6B902084cB0FFECe40Da;
+    address public constant AERODROME_ROUTER =0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43;
+    address public constant AERODROME_FACTORY =0x420DD381b31aEf6683db6B902084cB0FFECe40Da;
 
     // Bundler addresses
     address public constant ADAPTER_ADDRESS = 0xb98c948CFA24072e58935BC004a8A7b376AE746A;
@@ -62,7 +60,7 @@ contract UserVault_V4 is ReentrancyGuard, Pausable {
     uint256 public constant SLIPPAGE_TOLERANCE = 500; // 5% in basis points
 
     address public revenueAddress;
-    uint256 public feePercentage; // Fee percentage in basis points (e.g., 100 = 1%)
+    uint256 public feePercentage=0; // Fee percentage in basis points (e.g., 100 = 1%)
     uint256 public rebalanceFeePercentage; // Rebalance fee percentage in basis points (e.g., 1000 = 10%)
     uint256 public merklClaimFeePercentage; // Merkl claim fee percentage in basis points (e.g., 1000 = 10%)
     uint256 public minProfitForFee = 10e6; // $10 in USDC (6 decimals)
